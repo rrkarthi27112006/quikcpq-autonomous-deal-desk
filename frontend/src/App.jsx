@@ -6,7 +6,7 @@ import KPICards from './components/KPICards';
 import HITLEscalationBanner from './components/HITLEscalationBanner';
 import QuoteTable from './components/QuoteTable';
 import CatalogModal from './components/CatalogModal';
-import { Sparkles, ArrowRight, CheckCircle2, ShieldCheck, Clock } from 'lucide-react';
+import { Sparkles, ArrowRight, CheckCircle2, ShieldCheck, Clock, Check } from 'lucide-react';
 
 const API_BASE = 'http://127.0.0.1:8010';
 
@@ -192,8 +192,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-sans">
-      {/* Top Header */}
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+      {/* Top Navigation */}
       <Header
         useMockMode={useMockMode}
         setUseMockMode={setUseMockMode}
@@ -203,11 +203,11 @@ export default function App() {
         systemOnline={systemOnline}
       />
 
-      {/* Main Workspace */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {/* Main Container */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
           {/* Left Panel: RFP Intake & Controls (5 Cols) */}
-          <div className="lg:col-span-5 space-y-4">
+          <div className="lg:col-span-5 space-y-5">
             <ScenarioSelector
               scenarios={scenarios}
               selectedScenarioId={selectedScenarioId}
@@ -218,31 +218,31 @@ export default function App() {
               isRunning={isRunning}
             />
 
-            {/* Architecture Overview Card */}
-            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 text-xs text-slate-400">
-              <h4 className="font-semibold text-slate-200 mb-2 flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            {/* Architecture Card */}
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs text-xs text-slate-600">
+              <h4 className="font-bold text-slate-800 mb-2.5 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 Autonomous Guardrail Principles
               </h4>
-              <ul className="space-y-1.5 text-[11px] leading-relaxed">
-                <li className="flex items-start gap-1.5">
-                  <span className="text-emerald-400 font-bold">&bull;</span>
-                  <span><strong>Zero Hallucinated Math:</strong> Pricing and margins run on deterministic Python tools, never LLM arithmetic.</span>
+              <ul className="space-y-2 text-xs leading-relaxed text-slate-500">
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 mt-1.5 flex-shrink-0"></span>
+                  <span><strong className="text-slate-800">Deterministic Math:</strong> Financial pricing and gross margin calculations execute via strict Python tools—zero hallucinated arithmetic.</span>
                 </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="text-indigo-400 font-bold">&bull;</span>
-                  <span><strong>Dependency Correction:</strong> Automatic base-tier promotion when enterprise features are requested.</span>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-1.5 flex-shrink-0"></span>
+                  <span><strong className="text-slate-800">Dependency Validation:</strong> Automatically promotes base tiers to preserve SSO and architectural prerequisites.</span>
                 </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="text-amber-400 font-bold">&bull;</span>
-                  <span><strong>HITL Escalation:</strong> Hard stops on discount &gt; 15% or gross margin &lt; 25% with automated counter-offers.</span>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-600 mt-1.5 flex-shrink-0"></span>
+                  <span><strong className="text-slate-800">HITL Escalation:</strong> Blocks discount &gt; 15% or gross margin &lt; 25% with automated multi-year counter-offers.</span>
                 </li>
               </ul>
             </div>
           </div>
 
           {/* Right Panel: Agent Timeline & Quote Outputs (7 Cols) */}
-          <div className="lg:col-span-7 space-y-4">
+          <div className="lg:col-span-7 space-y-5">
             {/* KPI Cards */}
             {currentQuote && <KPICards quote={currentQuote} />}
 

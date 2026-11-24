@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 export default function AgentTimeline({ executionTrace, isRunning }) {
-  const [expandedSteps, setExpandedSteps] = useState({ 1: true, 2: true, 3: true, 4: true });
+  const [expandedSteps, setExpandedSteps] = useState({ 1: false, 2: false, 3: false, 4: false });
 
   const toggleStep = (stepNumber) => {
     setExpandedSteps(prev => ({
@@ -24,41 +24,41 @@ export default function AgentTimeline({ executionTrace, isRunning }) {
   };
 
   const getAgentIcon = (agentName) => {
-    if (agentName.includes("Intake")) return <Sparkles className="w-4 h-4 text-indigo-400" />;
-    if (agentName.includes("Pricing")) return <Calculator className="w-4 h-4 text-cyan-400" />;
-    if (agentName.includes("Guardrail")) return <ShieldAlert className="w-4 h-4 text-amber-400" />;
-    return <FileText className="w-4 h-4 text-emerald-400" />;
+    if (agentName.includes("Intake")) return <Sparkles className="w-4 h-4 text-indigo-600" />;
+    if (agentName.includes("Pricing")) return <Calculator className="w-4 h-4 text-cyan-600" />;
+    if (agentName.includes("Guardrail")) return <ShieldAlert className="w-4 h-4 text-amber-600" />;
+    return <FileText className="w-4 h-4 text-emerald-600" />;
   };
 
   const getStatusBadge = (status) => {
     switch (status) {
       case 'SUCCESS':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
-            <CheckCircle2 className="w-3 h-3" /> SUCCESS
+          <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
+            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Completed
           </span>
         );
       case 'AUTO_CORRECTED':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 font-medium animate-pulse">
-            <Sparkles className="w-3 h-3 text-indigo-400" /> BUNDLE AUTO-FIX
+          <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold">
+            <Sparkles className="w-3 h-3 text-indigo-600" /> Bundle Auto-Corrected
           </span>
         );
       case 'ESCALATED':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 font-medium">
-            <AlertTriangle className="w-3 h-3" /> HITL ESCALATED
+          <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300 font-bold">
+            <AlertTriangle className="w-3 h-3 text-amber-600" /> Policy Breach (HITL)
           </span>
         );
       case 'APPROVED':
         return (
-          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
-            <ShieldCheck className="w-3 h-3" /> AUTO-APPROVED
+          <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
+            <ShieldCheck className="w-3 h-3 text-emerald-600" /> Auto-Approved
           </span>
         );
       default:
         return (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
+          <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
             {status}
           </span>
         );
@@ -67,12 +67,12 @@ export default function AgentTimeline({ executionTrace, isRunning }) {
 
   if (!executionTrace || executionTrace.length === 0) {
     return (
-      <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-8 text-center">
-        <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto mb-3 text-indigo-400">
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-8 text-center shadow-xs">
+        <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto mb-3 text-indigo-600">
           <Sparkles className="w-6 h-6 animate-pulse" />
         </div>
-        <h3 className="text-sm font-semibold text-slate-200">Autonomous Reasoning Pipeline Ready</h3>
-        <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1">
+        <h3 className="text-sm font-bold text-slate-800">Agent Reasoning Engine Ready</h3>
+        <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 leading-relaxed">
           Select an RFP scenario on the left and click "Run Autonomous Deal Desk" to observe real-time agent execution traces and deterministic tool calls.
         </p>
       </div>
@@ -80,14 +80,16 @@ export default function AgentTimeline({ executionTrace, isRunning }) {
   }
 
   return (
-    <div className="space-y-3 mb-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-          <span>Multi-Agent LangGraph Execution Trace</span>
-          <span className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-mono text-[10px]">
-            {executionTrace.length} Steps
-          </span>
-        </h3>
+    <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs mb-6">
+      <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+        <div>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+            <span>Multi-Agent LangGraph Reasoning Pipeline</span>
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-semibold">
+              {executionTrace.length} Steps Executed
+            </span>
+          </h3>
+        </div>
         <button
           onClick={() => {
             const allExpanded = Object.values(expandedSteps).every(Boolean);
@@ -95,87 +97,81 @@ export default function AgentTimeline({ executionTrace, isRunning }) {
             executionTrace.forEach(t => { newState[t.step_number] = !allExpanded; });
             setExpandedSteps(newState);
           }}
-          className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium"
+          className="text-xs text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer"
         >
-          {Object.values(expandedSteps).every(Boolean) ? 'Collapse All' : 'Expand All'}
+          {Object.values(expandedSteps).every(Boolean) ? 'Collapse Details' : 'Expand Details'}
         </button>
       </div>
 
-      <div className="space-y-2.5">
+      <div className="space-y-3">
         {executionTrace.map((trace) => {
           const isExpanded = !!expandedSteps[trace.step_number];
 
           return (
             <div 
               key={trace.step_number}
-              className="bg-slate-900/90 border border-slate-800/90 rounded-xl overflow-hidden transition-all shadow-sm hover:border-slate-700/80"
+              className="bg-slate-50/80 border border-slate-200/80 rounded-xl overflow-hidden transition-all hover:border-slate-300"
             >
               {/* Header Bar */}
               <div 
                 onClick={() => toggleStep(trace.step_number)}
-                className="p-3.5 flex items-center justify-between cursor-pointer select-none hover:bg-slate-800/40 transition-colors"
+                className="p-3.5 flex items-center justify-between cursor-pointer select-none hover:bg-slate-100/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700/60 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-2xs">
                     {getAgentIcon(trace.agent_name)}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-white tracking-tight">
+                      <span className="text-xs font-bold text-slate-900">
                         {trace.agent_name}
                       </span>
                       {getStatusBadge(trace.status)}
                     </div>
-                    <p className="text-[11px] text-slate-400">
-                      {trace.role}
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {trace.reasoning}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1 text-[11px] text-slate-400 font-mono">
-                    <Clock className="w-3 h-3 text-slate-500" />
+                    <Clock className="w-3 h-3 text-slate-400" />
                     {trace.latency_ms}ms
                   </div>
                   {isExpanded ? (
-                    <ChevronUp className="w-4 h-4 text-slate-400" />
+                    <ChevronUp className="w-4 h-4 text-slate-500" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                    <ChevronDown className="w-4 h-4 text-slate-500" />
                   )}
                 </div>
               </div>
 
               {/* Collapsible Details */}
               {isExpanded && (
-                <div className="px-3.5 pb-3.5 pt-1 border-t border-slate-800/60 bg-slate-950/40 text-xs space-y-3">
-                  {/* Reasoning Callout */}
-                  <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-300 text-xs leading-relaxed">
-                    <span className="font-semibold text-slate-200">Agent Reasoning: </span>
-                    {trace.reasoning}
-                  </div>
-
+                <div className="px-4 pb-4 pt-1 border-t border-slate-200/70 bg-white text-xs space-y-3">
                   {/* Tool Calls */}
                   {trace.tool_calls && trace.tool_calls.length > 0 && (
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-400">
-                        <Code2 className="w-3 h-3 text-cyan-400" />
-                        Deterministic Python Tools Executed:
+                    <div className="space-y-1.5 pt-2">
+                      <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-600">
+                        <Code2 className="w-3.5 h-3.5 text-indigo-600" />
+                        Deterministic Python Tools:
                       </div>
                       {trace.tool_calls.map((tool, idx) => (
-                        <div key={idx} className="bg-slate-950 rounded-lg p-2.5 border border-slate-800/80 font-mono text-[11px]">
-                          <div className="text-cyan-400 font-semibold mb-1">
-                            tool: {tool.tool_name}()
+                        <div key={idx} className="bg-slate-50 rounded-lg p-2.5 border border-slate-200 font-mono text-[11px]">
+                          <div className="text-indigo-600 font-semibold mb-1">
+                            {tool.tool_name}()
                           </div>
-                          <div className="text-slate-400 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px]">
+                          <div className="text-slate-600 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px]">
                             <div>
-                              <span className="text-slate-500">Inputs: </span>
-                              <pre className="text-slate-300 overflow-x-auto whitespace-pre-wrap mt-0.5">
+                              <span className="text-slate-400 font-sans font-semibold">Inputs: </span>
+                              <pre className="text-slate-700 overflow-x-auto whitespace-pre-wrap mt-0.5 bg-white p-1.5 rounded border border-slate-200">
                                 {JSON.stringify(tool.input, null, 2)}
                               </pre>
                             </div>
                             <div>
-                              <span className="text-slate-500">Output: </span>
-                              <pre className="text-emerald-400 overflow-x-auto whitespace-pre-wrap mt-0.5">
+                              <span className="text-slate-400 font-sans font-semibold">Outputs: </span>
+                              <pre className="text-emerald-700 overflow-x-auto whitespace-pre-wrap mt-0.5 bg-white p-1.5 rounded border border-slate-200">
                                 {JSON.stringify(tool.output, null, 2)}
                               </pre>
                             </div>
@@ -188,11 +184,11 @@ export default function AgentTimeline({ executionTrace, isRunning }) {
                   {/* Rule Checks Evaluated */}
                   {trace.rule_checks && trace.rule_checks.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                      <span className="text-[10px] text-slate-500 font-medium">Compliance Rules Evaluated:</span>
+                      <span className="text-[10px] text-slate-500 font-semibold">Policy Validations:</span>
                       {trace.rule_checks.map((rule, idx) => (
                         <span 
                           key={idx} 
-                          className="text-[10px] px-2 py-0.5 rounded bg-slate-800/70 text-slate-300 border border-slate-700/50"
+                          className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-medium"
                         >
                           &bull; {rule}
                         </span>
