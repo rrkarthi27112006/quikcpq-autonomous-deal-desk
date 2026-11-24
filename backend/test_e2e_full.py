@@ -7,8 +7,8 @@ import urllib.request
 import json
 import time
 
-BASE_URL = "http://127.0.0.1:8000"
-FRONTEND_URL = "http://127.0.0.1:5173"
+BASE_URL = "http://127.0.0.1:8010"
+FRONTEND_URL = "http://127.0.0.1:5180"
 
 def make_request(endpoint, method="GET", data=None):
     url = f"{BASE_URL}{endpoint}"
@@ -29,7 +29,7 @@ def test_frontend_server():
             html = resp.read().decode("utf-8")
             assert resp.status == 200, f"Expected 200, got {resp.status}"
             assert "<div id=\"root\"></div>" in html, "HTML root missing"
-            print("✓ Frontend Vite server responding at http://127.0.0.1:5173 with status 200 OK.")
+            print(f"✓ Frontend Vite server responding at {FRONTEND_URL} with status 200 OK.")
     except Exception as e:
         print(f"✗ Frontend check error: {e}")
         raise

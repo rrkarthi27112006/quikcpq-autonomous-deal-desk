@@ -8,6 +8,8 @@ import QuoteTable from './components/QuoteTable';
 import CatalogModal from './components/CatalogModal';
 import { Sparkles, ArrowRight, CheckCircle2, ShieldCheck, Clock } from 'lucide-react';
 
+const API_BASE = 'http://127.0.0.1:8010';
+
 export default function App() {
   const [scenarios, setScenarios] = useState([]);
   const [catalog, setCatalog] = useState(null);
@@ -24,7 +26,7 @@ export default function App() {
 
   // 1. Fetch Scenarios & Catalog on mount
   useEffect(() => {
-    fetch('/api/scenarios')
+    fetch(`${API_BASE}/api/scenarios`)
       .then(res => {
         if (!res.ok) throw new Error('API offline');
         return res.json();
@@ -41,8 +43,20 @@ export default function App() {
         }
       })
       .catch(err => {
-        console.warn('Fallback: Backend connecting or offline', err);
-        setSystemOnline(false);
+        console.warn('Fallback to proxy /api/scenarios', err);
+        fetch('/api/scenarios')
+          .then(res => res.json())
+          .then(data => {
+            setScenarios(data.scenarios || []);
+            setCatalog(data.catalog || null);
+            setSystemOnline(true);
+            if (data.scenarios && data.scenarios.length > 0) {
+              const first = data.scenarios[0];
+              setSelectedScenarioId(first.id);
+              setRfpText(first.rfp_text);
+            }
+          })
+          .catch(() => setSystemOnline(false));
       });
   }, []);
 
@@ -57,22 +71,41 @@ export default function App() {
     if (!rfpText.trim()) return;
     setIsRunning(true);
     try {
-      const res = await fetch('/api/run-cpq', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rfp_text: rfpText,
-          use_mock_mode: useMockMode,
-          gemini_api_key: geminiKey || null,
-          scenario_id: selectedScenarioId || null
-        })
-      });
-      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      let res;
+      try {
+        res = await fetch(`${API_BASE}/api/run-cpq`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rfp_text: rfpText,
+            use_mock_mode: useMockMode,
+            gemini_api_key: geminiKey || null,
+            scenario_id: selectedScenarioId || null
+          })
+        });
+      } catch (networkErr) {
+        // Fallback to relative proxy
+        res = await fetch('/api/run-cpq', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rfp_text: rfpText,
+            use_mock_mode: useMockMode,
+            gemini_api_key: geminiKey || null,
+            scenario_id: selectedScenarioId || null
+          })
+        });
+      }
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || `Server returned status ${res.status}`);
+      }
       const data = await res.json();
       setCurrentQuote(data);
     } catch (err) {
       console.error('Failed to run CPQ pipeline:', err);
-      alert('Error running CPQ Agent. Please check backend connection.');
+      alert(`Deal Desk Execution Note: ${err.message}\nPlease ensure the backend server is running on http://127.0.0.1:8010.`);
     } finally {
       setIsRunning(false);
     }
@@ -83,7 +116,7 @@ export default function App() {
     if (!currentQuote) return;
     setIsProcessingApproval(true);
     try {
-      const res = await fetch('/api/approve-deal', {
+      const res = await fetch(`${API_BASE}/api/approve-deal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -108,7 +141,7 @@ export default function App() {
     if (!currentQuote) return;
     setIsProcessingApproval(true);
     try {
-      const res = await fetch('/api/approve-deal', {
+      const res = await fetch(`${API_BASE}/api/approve-deal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -133,7 +166,7 @@ export default function App() {
     if (!currentQuote) return;
     setIsDownloadingPDF(true);
     try {
-      const res = await fetch('/api/export-pdf', {
+      const res = await fetch(`${API_BASE}/api/export-pdf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

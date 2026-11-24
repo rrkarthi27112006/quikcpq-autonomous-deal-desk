@@ -201,9 +201,9 @@ Open two terminal windows:
 **Terminal 1 — Backend API Server:**
 ```bash
 # From workspace root:
-backend\.venv\Scripts\uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+backend\.venv\Scripts\uvicorn backend.main:app --host 127.0.0.1 --port 8010 --reload
 ```
-API Documentation will be available at: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+API Documentation will be available at: [http://127.0.0.1:8010/docs](http://127.0.0.1:8010/docs)
 
 **Terminal 2 — Frontend React Dashboard:**
 ```bash
@@ -211,7 +211,7 @@ API Documentation will be available at: [http://127.0.0.1:8000/docs](http://127.
 cd frontend
 npm run dev
 ```
-Open your browser at: [http://localhost:5173/](http://localhost:5173/)
+Open your browser at: [http://127.0.0.1:5180/](http://127.0.0.1:5180/)
 
 ---
 
