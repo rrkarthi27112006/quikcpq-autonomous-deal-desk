@@ -1,0 +1,15 @@
+cat << 'EOF' > .gitignore
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+.env
+*.db
+*.sqlite3
+
+# Node / React
+node_modules/
+frontend/dist/
+.DS_Store
+EOF
