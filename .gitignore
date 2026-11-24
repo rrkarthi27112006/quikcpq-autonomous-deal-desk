@@ -1,15 +1,19 @@
-cat << 'EOF' > .gitignore
 # Python
 __pycache__/
 *.py[cod]
+*$py.class
 venv/
 .venv/
+backend/.venv/
 .env
 *.db
 *.sqlite3
+backend/data/*.db
 
 # Node / React
 node_modules/
+frontend/node_modules/
+dist/
 frontend/dist/
 .DS_Store
-EOF
+*.local

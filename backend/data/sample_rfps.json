@@ -1,0 +1,44 @@
+[
+  {
+    "id": "scenario-1",
+    "title": "Scenario 1: Standard Deal (Auto-Approve)",
+    "scenario_type": "standard_approved",
+    "badge": "Auto-Approved",
+    "customer": {
+      "company": "Acme Logistics Inc.",
+      "contact_name": "Sarah Jenkins",
+      "contact_email": "sjenkins@acmelogistics.com",
+      "industry": "Supply Chain & Logistics"
+    },
+    "rfp_text": "Hi QuikCPQ Deal Desk,\n\nWe are looking to equip our global dispatch and operations team of 60 users with your Pro tier. In addition, we need 24/7 Dedicated Support included in the contract to ensure 99.99% operational uptime.\n\nPlease apply standard annual volume discounting for our 60 seats and send over the final itemized quote.\n\nBest regards,\nSarah Jenkins\nVP Operations, Acme Logistics",
+    "expected_behavior": "Extracts 60 seats of Pro + Dedicated Support. Standard volume discount of 10% applies automatically. Gross margin stays healthy (~33.3%). Auto-approved without manager intervention."
+  },
+  {
+    "id": "scenario-2",
+    "title": "Scenario 2: Invalid Bundle (Auto-Fix Dependency)",
+    "scenario_type": "dependency_autofix",
+    "badge": "Auto-Correction",
+    "customer": {
+      "company": "FinServe Corp",
+      "contact_name": "Marcus Vance",
+      "contact_email": "m.vance@finservecorp.io",
+      "industry": "FinTech / Capital Markets"
+    },
+    "rfp_text": "Hello Sales Team,\n\nFinServe Corp is rolling out your platform to 40 investment analysts. Due to stringent compliance and SOC2 auditing requirements, we require Enterprise SSO (Okta integration) across all 40 accounts.\n\nWe'd like to sign up on the Starter tier with Enterprise SSO added. Please confirm pricing and provide the quote.\n\nThanks,\nMarcus Vance\nHead of Enterprise Infrastructure, FinServe Corp",
+    "expected_behavior": "Identifies that Enterprise SSO requires Pro or Enterprise tier. Configurator agent detects incompatibility with Starter tier, automatically upgrades base tier to Pro, notes the rationale clearly, and calculates compliant pricing."
+  },
+  {
+    "id": "scenario-3",
+    "title": "Scenario 3: Margin Guardrail Escalation (HITL)",
+    "scenario_type": "margin_escalation",
+    "badge": "HITL Escalated",
+    "customer": {
+      "company": "GlobalTech Solutions",
+      "contact_name": "Elena Rostova",
+      "contact_email": "elena.rostova@globaltech.com",
+      "industry": "Global Enterprise Software"
+    },
+    "rfp_text": "Dear Deal Desk,\n\nGlobalTech is evaluating QuikCPQ for 150 enterprise users. We require the full Enterprise tier plus your Custom AI Module for AI-powered clause redlining.\n\nOur procurement committee has a hard budget cap and requires a 35% discount off total list price for us to move forward this quarter. If you can meet this price, we can sign within 5 business days.\n\nRegards,\nElena Rostova\nChief Procurement Officer, GlobalTech Solutions",
+    "expected_behavior": "Calculates 150 Enterprise seats + Custom AI Module ($49,500/mo list). A 35% discount creates a gross margin breach (margin drops to 8.46%, well below the 25% floor) and exceeds the 15% max discount cap. The Guardrail router blocks auto-approval, flags ESCALATED, and synthesizes a compliant counter-offer (15% discount + 24-month contract term commitment)."
+  }
+]
