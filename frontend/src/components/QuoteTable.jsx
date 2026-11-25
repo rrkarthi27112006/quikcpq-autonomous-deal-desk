@@ -1,31 +1,60 @@
-import React, { useState } from 'react';
-import { 
-  FileText, 
-  Mail, 
-  Download, 
-  Copy, 
-  Check, 
-  ShieldCheck, 
-  Layers, 
+import React, { useState, useEffect } from 'react';
+import {
+  Mail,
+  Download,
+  Copy,
+  Check,
+  Layers,
   Sparkles,
-  Database
+  Database,
+  Send,
+  Save,
+  CheckCircle2,
 } from 'lucide-react';
 
-export default function QuoteTable({ quote, onDownloadPDF, isDownloadingPDF }) {
+export default function QuoteTable({
+  quote,
+  onDownloadPDF,
+  isDownloadingPDF,
+  onSaveDraft,
+  onSendEmail,
+  isSendingEmail,
+  deliveryFeedback,
+}) {
   const [activeTab, setActiveTab] = useState('items'); // 'items' | 'email' | 'audit'
   const [copiedEmail, setCopiedEmail] = useState(false);
+  const [emailDraft, setEmailDraft] = useState('');
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [draftSaved, setDraftSaved] = useState(false);
+
+  useEffect(() => {
+    if (quote) {
+      setEmailDraft(quote.client_email_draft || '');
+      setRecipientEmail(quote.customer_email || '');
+    }
+  }, [quote?.quote_id, quote?.client_email_draft, quote?.customer_email]);
 
   if (!quote) return null;
 
   const lineItems = quote.line_items || [];
   const fixes = quote.dependency_fixes || [];
   const approvalType = quote.approval_type || 'auto';
+  const isEscalated = quote.guardrail_status === 'ESCALATED';
+  const isSent = quote.delivery_status === 'SENT';
 
   const handleCopyEmail = () => {
-    if (quote.client_email_draft) {
-      navigator.clipboard.writeText(quote.client_email_draft);
+    if (emailDraft) {
+      navigator.clipboard.writeText(emailDraft);
       setCopiedEmail(true);
       setTimeout(() => setCopiedEmail(false), 2000);
+    }
+  };
+
+  const handleSave = async () => {
+    if (onSaveDraft) {
+      await onSaveDraft(quote.quote_id, emailDraft);
+      setDraftSaved(true);
+      setTimeout(() => setDraftSaved(false), 2000);
     }
   };
 
@@ -69,21 +98,57 @@ export default function QuoteTable({ quote, onDownloadPDF, isDownloadingPDF }) {
           </button>
         </div>
 
-        {/* Primary PDF Download Action */}
-        <button
-          onClick={onDownloadPDF}
-          disabled={isDownloadingPDF}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-xs font-semibold shadow-xs transition-all disabled:opacity-50 cursor-pointer"
-        >
-          <Download className="w-3.5 h-3.5" />
-          {isDownloadingPDF ? 'Generating...' : 'Download Official PDF Quote'}
-        </button>
+        {/* Action Buttons: PDF + Send Email */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onDownloadPDF}
+            disabled={isDownloadingPDF}
+            className="flex items-center gap-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-3.5 py-1.5 rounded-lg text-xs font-semibold shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5 text-indigo-600" />
+            {isDownloadingPDF ? 'Generating...' : 'Download PDF'}
+          </button>
+
+          <button
+            onClick={() => onSendEmail(quote.quote_id, recipientEmail, emailDraft)}
+            disabled={isEscalated || isSendingEmail}
+            title={
+              isEscalated
+                ? 'Approve or accept counter-offer before emailing the client'
+                : `Send official quote + PDF to ${recipientEmail}`
+            }
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+              isSent
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+            }`}
+          >
+            <Send className="w-3.5 h-3.5" />
+            {isSendingEmail ? 'Sending...' : isSent ? 'Resend Quote Email' : 'Send Quote Email'}
+          </button>
+        </div>
       </div>
+
+      {/* Delivery Status Banner */}
+      {(isSent || deliveryFeedback) && (
+        <div className="px-5 py-2.5 bg-emerald-50 border-b border-emerald-200 text-xs text-emerald-800 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span>
+              {deliveryFeedback || `Quote & PDF dispatched to ${quote.sent_to || quote.customer_email}`}
+            </span>
+          </div>
+          {quote.sent_at && (
+            <span className="text-[11px] text-emerald-700 font-mono">
+              {new Date(quote.sent_at).toLocaleTimeString()}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Tab 1: Line Items Table */}
       {activeTab === 'items' && (
         <div className="p-5">
-          {/* Bundle Auto-Fix Banner if applicable */}
           {fixes.length > 0 && (
             <div className="mb-4 bg-indigo-50 border border-indigo-200 rounded-xl p-3.5 flex items-start gap-2.5 text-xs text-indigo-900">
               <Sparkles className="w-4 h-4 text-indigo-600 mt-0.5 flex-shrink-0" />
@@ -97,7 +162,6 @@ export default function QuoteTable({ quote, onDownloadPDF, isDownloadingPDF }) {
             </div>
           )}
 
-          {/* Table */}
           <div className="overflow-x-auto rounded-xl border border-slate-200">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
@@ -113,15 +177,15 @@ export default function QuoteTable({ quote, onDownloadPDF, isDownloadingPDF }) {
               <tbody className="divide-y divide-slate-100 text-slate-700">
                 {lineItems.map((item, idx) => (
                   <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3 px-4 font-semibold text-slate-900">
-                      {item.name}
-                    </td>
+                    <td className="py-3 px-4 font-semibold text-slate-900">{item.name}</td>
                     <td className="py-3 px-4">
-                      <span className={`inline-block text-[11px] px-2 py-0.5 rounded-full font-medium ${
-                        item.category === 'base_tier' 
-                          ? 'bg-purple-50 text-purple-700 border border-purple-200' 
-                          : 'bg-slate-100 text-slate-600'
-                      }`}>
+                      <span
+                        className={`inline-block text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                          item.category === 'base_tier'
+                            ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}
+                      >
                         {item.category === 'base_tier' ? 'Base Tier' : 'Add-on'}
                       </span>
                     </td>
@@ -139,7 +203,6 @@ export default function QuoteTable({ quote, onDownloadPDF, isDownloadingPDF }) {
             </table>
           </div>
 
-          {/* Subtotals & Deductions */}
           <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs">
             <div className="text-slate-500">
               Contract Terms: <span className="font-semibold text-slate-800">Annual Advance Billing, Net 30</span>
@@ -174,40 +237,60 @@ export default function QuoteTable({ quote, onDownloadPDF, isDownloadingPDF }) {
         </div>
       )}
 
-      {/* Tab 2: Client Response Email Draft */}
+      {/* Tab 2: Editable Client Response Email Draft */}
       {activeTab === 'email' && (
-        <div className="p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs text-slate-500">
-              Synthesized by Proposal Closer Agent for <strong className="text-slate-800">{quote.customer_name}</strong>
-            </span>
-            <button
-              onClick={handleCopyEmail}
-              className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded-lg transition-colors cursor-pointer"
-            >
-              {copiedEmail ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-              {copiedEmail ? 'Copied to Clipboard!' : 'Copy Email Text'}
-            </button>
+        <div className="p-5 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-slate-500 font-medium">To:</span>
+              <input
+                type="email"
+                value={recipientEmail}
+                onChange={(e) => setRecipientEmail(e.target.value)}
+                className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-900 font-medium w-60 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleSave}
+                className="flex items-center gap-1.5 text-xs text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1 rounded-lg transition-colors cursor-pointer"
+              >
+                {draftSaved ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Save className="w-3.5 h-3.5" />}
+                {draftSaved ? 'Saved!' : 'Save Draft'}
+              </button>
+              <button
+                onClick={handleCopyEmail}
+                className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded-lg transition-colors cursor-pointer"
+              >
+                {copiedEmail ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedEmail ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
           </div>
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 font-mono text-xs text-slate-700 leading-relaxed whitespace-pre-wrap select-all">
-            {quote.client_email_draft}
-          </div>
+          <textarea
+            rows={13}
+            value={emailDraft}
+            onChange={(e) => setEmailDraft(e.target.value)}
+            className="w-full bg-slate-50 p-4 rounded-xl border border-slate-200 font-mono text-xs text-slate-700 leading-relaxed focus:outline-none focus:border-indigo-500 focus:bg-white resize-y"
+          />
         </div>
       )}
 
       {/* Tab 3: Governance & Audit Trail */}
       {activeTab === 'audit' && (
         <div className="p-5 text-xs space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
               <span className="text-slate-500 block mb-1">Quote Reference ID:</span>
-              <span className="font-mono font-bold text-indigo-700 text-sm">{quote.quote_id}</span>
+              <span className="font-mono font-bold text-indigo-700 text-xs">{quote.quote_id}</span>
             </div>
             <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-              <span className="text-slate-500 block mb-1">Audit DB Persistence:</span>
-              <span className="font-mono text-emerald-700 flex items-center gap-1 font-semibold">
-                <Check className="w-3.5 h-3.5" /> Stored in backend/data/audit.db
-              </span>
+              <span className="text-slate-500 block mb-1">Intake Channel:</span>
+              <span className="font-mono font-semibold text-slate-800">{quote.source || 'manual_intake'}</span>
+            </div>
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              <span className="text-slate-500 block mb-1">Delivery Status:</span>
+              <span className="font-mono font-semibold text-emerald-700">{quote.delivery_status || 'DRAFT'}</span>
             </div>
           </div>
 

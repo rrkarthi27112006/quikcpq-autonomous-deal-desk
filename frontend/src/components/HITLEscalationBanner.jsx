@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldAlert, AlertTriangle, Check, ArrowRight, CornerDownRight, FileSignature } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, Check, CornerDownRight, FileSignature } from 'lucide-react';
 
 export default function HITLEscalationBanner({ 
   quote, 
@@ -26,14 +26,13 @@ export default function HITLEscalationBanner({
               Financial Policy Escalation — Deal Desk Manager Review Required
             </h3>
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-200/70 text-amber-800 font-bold border border-amber-300 uppercase">
-              Approval Paused
+              Sending Blocked
             </span>
           </div>
           <p className="text-xs text-slate-600 mt-1 leading-relaxed">
             The requested customer discount exceeds autonomous approval thresholds and breaches the company gross margin floor.
           </p>
 
-          {/* Policy Violations */}
           <div className="mt-3 space-y-1.5">
             {violations.map((v, idx) => (
               <div key={idx} className="flex items-start gap-2 text-xs text-amber-900 bg-white/80 border border-amber-200 rounded-lg p-2.5 shadow-2xs">
@@ -85,44 +84,46 @@ export default function HITLEscalationBanner({
 
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
-            {!showOverrideInput ? (
-              <button
-                onClick={() => setShowOverrideInput(true)}
-                disabled={isProcessing}
-                className="px-3 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors cursor-pointer"
-              >
-                Request Manager Override...
-              </button>
-            ) : (
-              <div className="w-full sm:w-auto flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Enter manager rationale..."
-                  value={overrideNotes}
-                  onChange={(e) => setOverrideNotes(e.target.value)}
-                  className="bg-white border border-slate-300 text-xs px-3 py-2 rounded-lg text-slate-900 w-64 focus:outline-none focus:border-indigo-600"
-                />
+            <div>
+              {!showOverrideInput ? (
                 <button
-                  onClick={() => onApproveOverride(overrideNotes)}
+                  onClick={() => setShowOverrideInput(true)}
                   disabled={isProcessing}
-                  className="px-3.5 py-2 text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                  className="px-3 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors cursor-pointer"
                 >
-                  <FileSignature className="w-3.5 h-3.5" />
-                  Grant Override
+                  Grant Override...
                 </button>
-                <button
-                  onClick={() => setShowOverrideInput(false)}
-                  className="text-xs text-slate-500 hover:text-slate-800 px-2 cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
+              ) : (
+                <div className="w-full sm:w-auto flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Enter manager rationale..."
+                    value={overrideNotes}
+                    onChange={(e) => setOverrideNotes(e.target.value)}
+                    className="bg-white border border-slate-300 text-xs px-3 py-2 rounded-lg text-slate-900 w-56 focus:outline-none focus:border-indigo-600"
+                  />
+                  <button
+                    onClick={() => onApproveOverride(overrideNotes)}
+                    disabled={isProcessing}
+                    className="px-3.5 py-2 text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <FileSignature className="w-3.5 h-3.5" />
+                    Confirm Override
+                  </button>
+                  <button
+                    onClick={() => setShowOverrideInput(false)}
+                    className="text-xs text-slate-500 hover:text-slate-800 px-2 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
 
             <button
               onClick={onAcceptCounterOffer}
               disabled={isProcessing}
-              className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
             >
               <Check className="w-4 h-4" />
               Accept Compliant Counter-Offer (15% / 24-Mo)

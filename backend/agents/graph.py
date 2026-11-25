@@ -15,6 +15,7 @@ from typing import TypedDict, List, Dict, Any, Optional, Literal
 from datetime import datetime
 
 from langgraph.graph import StateGraph, END
+from backend.config import load_env_file
 from backend.agents.tools import (
     validate_and_configure_bundle,
     calculate_pricing,
@@ -27,6 +28,10 @@ class CPQState(TypedDict, total=False):
     rfp_text: str
     use_mock_mode: bool
     gemini_api_key: Optional[str]
+    source: str
+    email_subject: str
+    email_message_id: str
+    delivery_status: str
     
     # Customer Details
     customer_name: str
@@ -192,6 +197,7 @@ Return ONLY a valid JSON object with these exact keys:
 # ----------------- 1. Intake & Configurator Node -----------------
 def intake_configurator_node(state: CPQState) -> Dict[str, Any]:
     start_t = time.time()
+    load_env_file()
     rfp_text = state.get("rfp_text", "")
     use_mock = state.get("use_mock_mode", True)
     api_key = state.get("gemini_api_key") or os.environ.get("GEMINI_API_KEY")
@@ -202,10 +208,14 @@ def intake_configurator_node(state: CPQState) -> Dict[str, Any]:
     else:
         extracted = parse_rfp_fallback(rfp_text)
         
-    seats = extracted.get("seats", 50)
-    req_tier = extracted.get("requested_base_tier", "pro")
-    req_addons = extracted.get("requested_add_ons", [])
-    req_discount = extracted.get("requested_discount_pct", 0.0)
+    # Allow structured overrides from Deal Builder form or real email headers
+    customer_company = state.get("customer_company") or extracted.get("customer_company", "Customer")
+    customer_name = state.get("customer_name") or extracted.get("customer_name", "Valued Client")
+    customer_email = state.get("customer_email") or extracted.get("customer_email", "client@domain.com")
+    seats = int(state.get("seats") or extracted.get("seats", 50))
+    req_tier = state.get("requested_base_tier") or extracted.get("requested_base_tier", "pro")
+    req_addons = state.get("requested_add_ons") if state.get("requested_add_ons") is not None else extracted.get("requested_add_ons", [])
+    req_discount = float(state.get("requested_discount_pct") if state.get("requested_discount_pct") is not None else extracted.get("requested_discount_pct", 0.0))
     
     # Execute deterministic compatibility & bundle validation tool
     validation_res = validate_and_configure_bundle(req_tier, req_addons)
@@ -219,7 +229,7 @@ def intake_configurator_node(state: CPQState) -> Dict[str, Any]:
         "status": "AUTO_CORRECTED" if validation_res["fixes"] else "SUCCESS",
         "latency_ms": latency,
         "reasoning": (
-            f"Extracted customer '{extracted.get('customer_company')}' requesting {seats} seats with base tier '{req_tier}'. "
+            f"Extracted customer '{customer_company}' requesting {seats} seats with base tier '{req_tier}'. "
             f"Evaluated compatibility for requested add-ons: {req_addons}. "
             + (f"Violation detected! {validation_res['fixes'][0]['action']}" if validation_res["fixes"] 
                else "All catalog bundle dependency rules verified successfully.")
@@ -245,9 +255,9 @@ def intake_configurator_node(state: CPQState) -> Dict[str, Any]:
     traces.append(trace_entry)
     
     return {
-        "customer_company": extracted.get("customer_company", "Customer"),
-        "customer_name": extracted.get("customer_name", "Valued Client"),
-        "customer_email": extracted.get("customer_email", "client@domain.com"),
+        "customer_company": customer_company,
+        "customer_name": customer_name,
+        "customer_email": customer_email,
         "industry": extracted.get("industry", "Enterprise Software"),
         "seats": seats,
         "requested_base_tier": req_tier,
