@@ -227,7 +227,7 @@ def generate_pdf_quote(data: Dict[str, Any]) -> bytes:
     pdf.cell(label_w - 2, 5, "Total Annual Commitment:", align="L")
     pdf.cell(val_w, 5, f"${net_annual:,.2f}/yr", align="R", ln=1)
     
-    # 5. Guardrail Audit & Compliance Stamp Box (Left side of summary)
+    # 5. Client-Facing Proposal Reference & SLA Box (Left side of summary — no internal margins/COGS exposed)
     stamp_y = pdf.get_y() - 17
     pdf.set_fill_color(248, 250, 252)
     pdf.set_draw_color(226, 232, 240)
@@ -236,19 +236,19 @@ def generate_pdf_quote(data: Dict[str, Any]) -> bytes:
     pdf.set_xy(13, stamp_y + 2)
     pdf.set_font("helvetica", "B", 8.5)
     pdf.set_text_color(30, 41, 59)
-    pdf.cell(82, 4, "AUDIT & GOVERNANCE COMPLIANCE", ln=1)
+    pdf.cell(82, 4, "PROPOSAL SUMMARY & SLA", ln=1)
     
     pdf.set_x(13)
     pdf.set_font("helvetica", "", 7.5)
     pdf.set_text_color(100, 116, 139)
-    pdf.cell(82, 3.5, f"Verified Margin Floor: {gross_margin:.1f}% (Policy Minimum: 25.0%)", ln=1)
+    pdf.cell(82, 3.5, f"Proposal Reference: {quote_id}", ln=1)
     pdf.set_x(13)
-    pdf.cell(82, 3.5, f"Discount Threshold: {discount_pct:.1f}% (Auto-Approval Max: 15.0%)", ln=1)
+    pdf.cell(82, 3.5, "Billing Terms: Annual Advance (Net 30)", ln=1)
     pdf.set_x(13)
-    stamp_text = "Governance Status: COMPLIANT & APPROVED" if status == "APPROVED" else "Governance Status: HITL ESCALATION ACTIVE"
+    stamp_text = "Authorization: APPROVED & READY TO SIGN" if status == "APPROVED" else "Authorization: PENDING FINAL REVIEW"
     pdf.cell(82, 3.5, stamp_text, ln=1)
     pdf.set_x(13)
-    pdf.cell(82, 3.5, f"Audit Log ID: {quote_id} | Engine: QuikCPQ Multi-Agent v2.4", ln=1)
+    pdf.cell(82, 3.5, "Service Level: 99.95% Enterprise Uptime SLA", ln=1)
     
     pdf.ln(12)
     

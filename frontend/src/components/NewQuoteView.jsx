@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Sparkles, Mail, Sliders, FileText, ChevronDown } from 'lucide-react';
 
 export default function NewQuoteView({
   scenarios,
@@ -10,7 +9,6 @@ export default function NewQuoteView({
 }) {
   const [mode, setMode] = useState('builder'); // 'builder' | 'email'
 
-  // Structured Deal Builder state
   const [company, setCompany] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
@@ -19,7 +17,6 @@ export default function NewQuoteView({
   const [addOns, setAddOns] = useState([]);
   const [discountPct, setDiscountPct] = useState(0);
 
-  // Inbound Email Intake state
   const [fromEmail, setFromEmail] = useState('');
   const [fromName, setFromName] = useState('');
   const [subject, setSubject] = useState('Enterprise License Quote Request');
@@ -39,7 +36,7 @@ export default function NewQuoteView({
     setMode('email');
     setFromEmail(sc.customer?.contact_email || '');
     setFromName(sc.customer?.contact_name || '');
-    setSubject(`RFP Inquiry - ${sc.customer?.company || 'Enterprise'}`);
+    setSubject(`Quote Request - ${sc.customer?.company || 'Enterprise'}`);
     setBodyText(sc.rfp_text);
   };
 
@@ -65,7 +62,7 @@ export default function NewQuoteView({
     onSubmitInboundEmail({
       from_email: fromEmail.trim() || 'client@enterprise.com',
       from_name: fromName.trim() || undefined,
-      subject: subject.trim() || 'RFP Quote Request',
+      subject: subject.trim() || 'Quote Request',
       body_text: bodyText,
     });
   };
@@ -81,236 +78,297 @@ export default function NewQuoteView({
     { id: 'custom_ai_module', name: 'Custom AI Module', price: 80, type: 'seat_based' },
   ];
 
-  return (
-    <div className="max-w-3xl mx-auto">
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-5">
-          <div>
-            <h2 className="text-base font-bold text-slate-900">Create New Quote</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Configure a deal manually or process an incoming client RFP email through LangGraph.
-            </p>
-          </div>
+  // Live preview estimate for right-hand summary panel
+  const selectedTierObj = tiers.find((t) => t.id === baseTier) || tiers[0];
+  const seatCount = Math.max(1, Number(seats) || 1);
+  const tierSubtotal = (selectedTierObj?.price || 0) * seatCount;
+  const addonsSubtotal = addOns.reduce((acc, aid) => {
+    const a = availableAddOns.find((x) => x.id === aid);
+    if (!a) return acc;
+    return acc + (a.type === 'flat_fee' ? a.price : a.price * seatCount);
+  }, 0);
+  const listMonthly = tierSubtotal + addonsSubtotal;
+  const volDiscount = seatCount >= 200 ? 15 : seatCount >= 50 ? 10 : 0;
+  const effectiveDiscount = Number(discountPct) > 0 ? Number(discountPct) : volDiscount;
+  const estNet = listMonthly * (1 - effectiveDiscount / 100);
 
-          <div className="flex items-center gap-2">
-            {/* Mode Toggle */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/70 text-xs">
-              <button
-                type="button"
-                onClick={() => setMode('builder')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
-                  mode === 'builder' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600'
-                }`}
-              >
-                <Sliders className="w-3.5 h-3.5" /> Deal Builder
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('email')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer ${
-                  mode === 'email' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600'
-                }`}
-              >
-                <Mail className="w-3.5 h-3.5" /> Inbound Email
-              </button>
-            </div>
+  return (
+    <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      {/* Main Form (8 cols) */}
+      <div className="lg:col-span-8 bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between gap-4">
+          <h2 className="text-sm font-semibold text-slate-900">Create quote</h2>
+
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-md border border-slate-200 text-xs">
+            <button
+              type="button"
+              onClick={() => setMode('builder')}
+              className={`px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
+                mode === 'builder' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600'
+              }`}
+            >
+              Form
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('email')}
+              className={`px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
+                mode === 'email' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600'
+              }`}
+            >
+              Paste email
+            </button>
           </div>
         </div>
 
-        {mode === 'builder' ? (
-          <form onSubmit={handleBuilderSubmit} className="space-y-4 text-xs">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Company Name *</label>
-                <input
-                  required
-                  type="text"
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  placeholder="e.g. Acme Logistics"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white"
-                />
+        <div className="p-5">
+          {mode === 'builder' ? (
+            <form onSubmit={handleBuilderSubmit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div>
+                  <label className="font-medium text-slate-700 block mb-1">Company</label>
+                  <input
+                    required
+                    type="text"
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
+                    placeholder="Acme Corp"
+                    className="w-full bg-white border border-slate-300 rounded-md px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+                <div>
+                  <label className="font-medium text-slate-700 block mb-1">Contact name</label>
+                  <input
+                    required
+                    type="text"
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                    placeholder="Sarah Jenkins"
+                    className="w-full bg-white border border-slate-300 rounded-md px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+                <div>
+                  <label className="font-medium text-slate-700 block mb-1">Client email</label>
+                  <input
+                    required
+                    type="email"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="sarah@acme.com"
+                    className="w-full bg-white border border-slate-300 rounded-md px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Contact Name *</label>
-                <input
-                  required
-                  type="text"
-                  value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
-                  placeholder="e.g. Sarah Jenkins"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white"
-                />
-              </div>
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Client Email *</label>
-                <input
-                  required
-                  type="email"
-                  value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
-                  placeholder="sarah@acmelogistics.com"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white"
-                />
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div>
+                  <label className="font-medium text-slate-700 block mb-1">Plan</label>
+                  <select
+                    value={baseTier}
+                    onChange={(e) => setBaseTier(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded-md px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600"
+                  >
+                    {tiers.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} (${t.price}/seat/mo)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-medium text-slate-700 block mb-1">Seats</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={seats}
+                    onChange={(e) => setSeats(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded-md px-3 py-2 text-slate-900 tabular-nums focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+                <div>
+                  <label className="font-medium text-slate-700 block mb-1">Discount (%)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="80"
+                    step="0.5"
+                    value={discountPct}
+                    onChange={(e) => setDiscountPct(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded-md px-3 py-2 text-slate-900 tabular-nums focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="font-semibold text-slate-700 block mb-1">Base Tier</label>
-                <select
-                  value={baseTier}
-                  onChange={(e) => setBaseTier(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white"
+                <label className="font-medium text-slate-700 block mb-2">Add-ons</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {availableAddOns.map((a) => {
+                    const checked = addOns.includes(a.id);
+                    return (
+                      <label
+                        key={a.id}
+                        className={`p-3 rounded-md border cursor-pointer flex items-start gap-2.5 transition-colors ${
+                          checked ? 'border-blue-600 bg-blue-50/50' : 'border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleAddon(a.id)}
+                          className="mt-0.5 accent-blue-600"
+                        />
+                        <div>
+                          <div className="font-medium text-slate-900">{a.name}</div>
+                          <div className="text-[11px] text-slate-500">
+                            ${a.price}/{a.type === 'flat_fee' ? 'mo' : 'seat/mo'}
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={isRunning}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-4 py-2 rounded-md cursor-pointer disabled:opacity-50"
                 >
-                  {tiers.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} (${t.price}/seat/mo)
-                    </option>
+                  {isRunning ? 'Calculating...' : 'Generate quote'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleEmailSubmit} className="space-y-4 text-xs">
+              <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                <span className="text-slate-500">Process a raw client email</span>
+                <select
+                  onChange={handleLoadSample}
+                  defaultValue=""
+                  className="bg-white border border-slate-300 rounded-md px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:border-blue-600"
+                >
+                  <option value="" disabled>Load template...</option>
+                  {scenarios.map((sc) => (
+                    <option key={sc.id} value={sc.id}>{sc.title}</option>
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Licensed Seats</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={seats}
-                  onChange={(e) => setSeats(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-mono focus:outline-none focus:border-indigo-600 focus:bg-white"
-                />
-              </div>
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Requested Discount (%)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="80"
-                  step="0.5"
-                  value={discountPct}
-                  onChange={(e) => setDiscountPct(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-mono focus:outline-none focus:border-indigo-600 focus:bg-white"
-                />
-                <span className="text-[10px] text-slate-400">Leave 0 for automatic volume pricing</span>
-              </div>
-            </div>
 
-            <div>
-              <label className="font-semibold text-slate-700 block mb-2">Add-On Modules</label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {availableAddOns.map((a) => {
-                  const checked = addOns.includes(a.id);
-                  return (
-                    <label
-                      key={a.id}
-                      className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-2.5 ${
-                        checked ? 'bg-indigo-50/60 border-indigo-500' : 'bg-slate-50 border-slate-200 hover:bg-slate-100/70'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleAddon(a.id)}
-                        className="mt-0.5 accent-indigo-600"
-                      />
-                      <div>
-                        <div className="font-bold text-slate-900">{a.name}</div>
-                        <div className="text-[11px] text-slate-500">
-                          ${a.price}/{a.type === 'flat_fee' ? 'flat/mo' : 'seat/mo'}
-                        </div>
-                      </div>
-                    </label>
-                  );
-                })}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div>
+                  <label className="font-medium text-slate-700 block mb-1">From email</label>
+                  <input
+                    required
+                    type="email"
+                    value={fromEmail}
+                    onChange={(e) => setFromEmail(e.target.value)}
+                    placeholder="buyer@company.com"
+                    className="w-full bg-white border border-slate-300 rounded-md px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+                <div>
+                  <label className="font-medium text-slate-700 block mb-1">Sender name</label>
+                  <input
+                    type="text"
+                    value={fromName}
+                    onChange={(e) => setFromName(e.target.value)}
+                    placeholder="Elena Rostova"
+                    className="w-full bg-white border border-slate-300 rounded-md px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600"
+                  />
+                </div>
+                <div>
+                  <label className="font-medium text-slate-700 block mb-1">Subject</label>
+                  <input
+                    type="text"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded-md px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="pt-3 border-t border-slate-100 flex justify-end">
-              <button
-                type="submit"
-                disabled={isRunning}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-5 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer disabled:opacity-50"
-              >
-                <Sparkles className="w-4 h-4 text-indigo-200" />
-                {isRunning ? 'Running Deal Desk...' : 'Configure & Price Quote'}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <form onSubmit={handleEmailSubmit} className="space-y-4 text-xs">
-            <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-3">
-              <span className="text-slate-600">
-                Simulate an inbound client email to <code className="text-indigo-700 font-semibold">/api/webhooks/inbound-email</code>
-              </span>
-              <select
-                onChange={handleLoadSample}
-                defaultValue=""
-                className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:border-indigo-600"
-              >
-                <option value="" disabled>Load Sample Client Email...</option>
-                {scenarios.map((sc) => (
-                  <option key={sc.id} value={sc.id}>{sc.title}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               <div>
-                <label className="font-semibold text-slate-700 block mb-1">From Email *</label>
-                <input
+                <label className="font-medium text-slate-700 block mb-1">Email body</label>
+                <textarea
                   required
-                  type="email"
-                  value={fromEmail}
-                  onChange={(e) => setFromEmail(e.target.value)}
-                  placeholder="buyer@clientcompany.com"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white"
+                  rows={8}
+                  value={bodyText}
+                  onChange={(e) => setBodyText(e.target.value)}
+                  placeholder="Paste client email..."
+                  className="w-full bg-slate-50 border border-slate-300 rounded-md p-3 text-xs text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white leading-relaxed resize-y"
                 />
               </div>
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Sender Name</label>
-                <input
-                  type="text"
-                  value={fromName}
-                  onChange={(e) => setFromName(e.target.value)}
-                  placeholder="Elena Rostova"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white"
-                />
-              </div>
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">Email Subject</label>
-                <input
-                  type="text"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white"
-                />
-              </div>
-            </div>
 
-            <div>
-              <label className="font-semibold text-slate-700 block mb-1">Client Email Body *</label>
-              <textarea
-                required
-                rows={7}
-                value={bodyText}
-                onChange={(e) => setBodyText(e.target.value)}
-                placeholder="Paste the client's RFP email request here..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-800 focus:outline-none focus:border-indigo-600 focus:bg-white leading-relaxed resize-none"
-              />
-            </div>
+              <div className="pt-3 border-t border-slate-100 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={isRunning || !bodyText.trim()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs px-4 py-2 rounded-md cursor-pointer disabled:opacity-50"
+                >
+                  {isRunning ? 'Processing...' : 'Generate quote'}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
 
-            <div className="pt-3 border-t border-slate-100 flex justify-end">
-              <button
-                type="submit"
-                disabled={isRunning || !bodyText.trim()}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-5 py-2.5 rounded-xl shadow-sm transition-all cursor-pointer disabled:opacity-50"
-              >
-                <Sparkles className="w-4 h-4 text-indigo-200" />
-                {isRunning ? 'Processing Inbound Email...' : 'Process Client Email'}
-              </button>
+      {/* Right Summary / Policy Reference Panel (4 cols — eliminates dead space) */}
+      <div className="lg:col-span-4 space-y-4">
+        <div className="bg-white border border-slate-200 rounded-lg p-5 text-xs space-y-3">
+          <h3 className="text-xs font-semibold text-slate-900 pb-2 border-b border-slate-100">
+            Estimated summary
+          </h3>
+          {mode === 'builder' ? (
+            <div className="space-y-2 tabular-nums">
+              <div className="flex justify-between text-slate-500">
+                <span>{selectedTierObj?.name} ({seatCount} seats)</span>
+                <span className="text-slate-900 font-medium">${tierSubtotal.toLocaleString()}/mo</span>
+              </div>
+              {addonsSubtotal > 0 && (
+                <div className="flex justify-between text-slate-500">
+                  <span>Add-ons ({addOns.length})</span>
+                  <span className="text-slate-900 font-medium">${addonsSubtotal.toLocaleString()}/mo</span>
+                </div>
+              )}
+              <div className="flex justify-between text-slate-500">
+                <span>Discount</span>
+                <span>{effectiveDiscount}%</span>
+              </div>
+              <div className="flex justify-between font-semibold text-slate-900 text-sm pt-2 border-t border-slate-100">
+                <span>Est. net monthly</span>
+                <span className="text-blue-700">${estNet.toLocaleString('en-US', { maximumFractionDigits: 2 })}/mo</span>
+              </div>
             </div>
-          </form>
-        )}
+          ) : (
+            <p className="text-slate-500 leading-relaxed">
+              The email parser extracts customer info, seat counts, plan tier, and any requested discount automatically, then validates bundle rules and margins.
+            </p>
+          )}
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-lg p-5 text-xs space-y-2">
+          <h3 className="text-xs font-semibold text-slate-900 pb-2 border-b border-slate-100">
+            Active pricing rules
+          </h3>
+          <div className="flex justify-between text-slate-600">
+            <span>Volume (50–199 seats)</span>
+            <span className="font-medium text-slate-900">10% off</span>
+          </div>
+          <div className="flex justify-between text-slate-600">
+            <span>Volume (200+ seats)</span>
+            <span className="font-medium text-slate-900">15% off</span>
+          </div>
+          <div className="flex justify-between text-slate-600">
+            <span>Max auto-approve discount</span>
+            <span className="font-medium text-slate-900">15%</span>
+          </div>
+          <div className="flex justify-between text-slate-600">
+            <span>Minimum gross margin</span>
+            <span className="font-medium text-emerald-700">25%</span>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -72,11 +72,12 @@ def fetch_unread_rfp_emails(max_emails: int = 10) -> Dict[str, Any]:
     try:
         mail.login(user, password)
         mail.select(folder)
-        status, data = mail.search(None, "UNSEEN")
-        if status != "OK":
-            return {"configured": True, "emails": [], "message": "No unread emails found."}
+        status, data = mail.search(None, "ALL")
+        if status != "OK" or not data[0]:
+            return {"configured": True, "emails": [], "message": "No emails found in inbox."}
 
-        email_ids = data[0].split()[:max_emails]
+        # Check the most recent max_emails (newest first); deduplication is handled via Message-ID in audit.db
+        email_ids = list(reversed(data[0].split()))[:max_emails]
         for eid in email_ids:
             res, msg_data = mail.fetch(eid, "(RFC822)")
             if res != "OK":
@@ -87,6 +88,18 @@ def fetch_unread_rfp_emails(max_emails: int = 10) -> Dict[str, Any]:
             from_name, from_email = email.utils.parseaddr(from_header)
             subject = _decode_str(msg.get("Subject", "(No Subject)"))
             message_id = msg.get("Message-ID", "").strip()
+            auto_submitted = (msg.get("Auto-Submitted", "") or "").lower()
+
+            # Skip system bounces, mailer-daemon notifications, no-reply, and security alerts
+            sender_lower = (from_email or "").lower()
+            subj_lower = (subject or "").lower()
+            if (
+                auto_submitted in ("auto-replied", "auto-generated")
+                or any(s in sender_lower for s in ("mailer-daemon", "postmaster@", "noreply@", "no-reply@", "accounts.google.com"))
+                or any(k in subj_lower for k in ("delivery status notification", "mail delivery subsystem", "undeliverable", "returned mail", "security alert"))
+            ):
+                continue
+
             body_text = _extract_body(msg).strip()
 
             if body_text:

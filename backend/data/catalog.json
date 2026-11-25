@@ -5,21 +5,21 @@
       "id": "starter",
       "name": "Starter",
       "unit": "per_seat_per_month",
-      "price": 50.0,
+      "price": 50,
       "description": "Essential CPQ & quoting workflow for fast-growing sales teams."
     },
     {
       "id": "pro",
       "name": "Pro",
       "unit": "per_seat_per_month",
-      "price": 120.0,
+      "price": 120,
       "description": "Advanced workflow automation, dynamic discounting, and CRM bi-directional sync."
     },
     {
       "id": "enterprise",
       "name": "Enterprise",
       "unit": "per_seat_per_month",
-      "price": 250.0,
+      "price": 250,
       "description": "Unlimited seats, dedicated tenant isolation, SOC2 Type II, custom AI modules."
     }
   ],
@@ -28,27 +28,36 @@
       "id": "enterprise_sso",
       "name": "Enterprise SSO",
       "type": "seat_based",
-      "price": 30.0,
+      "price": 30,
       "unit": "per_seat_per_month",
-      "required_base_tier": ["pro", "enterprise"],
+      "required_base_tier": [
+        "pro",
+        "enterprise"
+      ],
       "description": "SAML 2.0 / Okta / Azure AD automated SCIM provisioning & audit logs."
     },
     {
       "id": "dedicated_support",
       "name": "Dedicated Support",
       "type": "flat_fee",
-      "price": 1500.0,
+      "price": 1500,
       "unit": "flat_per_month",
-      "required_base_tier": ["starter", "pro", "enterprise"],
+      "required_base_tier": [
+        "starter",
+        "pro",
+        "enterprise"
+      ],
       "description": "24/7/365 dedicated Technical Account Manager with 15-minute SLA."
     },
     {
       "id": "custom_ai_module",
       "name": "Custom AI Module",
       "type": "seat_based",
-      "price": 80.0,
+      "price": 80,
       "unit": "per_seat_per_month",
-      "required_base_tier": ["enterprise"],
+      "required_base_tier": [
+        "enterprise"
+      ],
       "description": "Fine-tuned domain-specific agent models for automated contract clause redlining."
     }
   ],
@@ -56,25 +65,25 @@
     {
       "min_seats": 1,
       "max_seats": 49,
-      "discount_pct": 0.0,
+      "discount_pct": 0,
       "label": "1-49 seats (Standard 0%)"
     },
     {
       "min_seats": 50,
       "max_seats": 199,
-      "discount_pct": 10.0,
+      "discount_pct": 10,
       "label": "50-199 seats (Tier 1 Volume - 10%)"
     },
     {
       "min_seats": 200,
       "max_seats": 999999,
-      "discount_pct": 15.0,
+      "discount_pct": 15,
       "label": "200+ seats (Tier 2 Volume - 15%)"
     }
   ],
   "financial_guardrails": {
-    "cogs_ratio": 0.60,
-    "min_gross_margin_pct": 25.0,
-    "max_auto_approved_discount_pct": 15.0
+    "cogs_ratio": 0.6,
+    "min_gross_margin_pct": 25,
+    "max_auto_approved_discount_pct": 15
   }
 }

@@ -1,25 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import Header from './components/Header';
+import Sidebar from './components/Sidebar';
 import PipelineSidebar from './components/PipelineSidebar';
 import NewQuoteView from './components/NewQuoteView';
 import CatalogAdminView from './components/CatalogAdminView';
-import AgentTimeline from './components/AgentTimeline';
 import KPICards from './components/KPICards';
 import HITLEscalationBanner from './components/HITLEscalationBanner';
 import QuoteTable from './components/QuoteTable';
 import IntegrationsModal from './components/IntegrationsModal';
-import {
-  Mail,
-  PlusCircle,
-  RefreshCw,
-  TrendingUp,
-  ShieldCheck,
-  ShieldAlert,
-  Send,
-  Inbox,
-} from 'lucide-react';
+import ApprovalsView from './components/ApprovalsView';
+import { Plus, Mail } from 'lucide-react';
 
-const API_BASE = 'http://127.0.0.1:8010';
+const API_BASE =
+  import.meta.env.VITE_API_URL ||
+  (['127.0.0.1', 'localhost'].includes(window.location.hostname) && window.location.port === '5180'
+    ? 'http://127.0.0.1:8010'
+    : '');
 
 export default function App() {
   const [activeView, setActiveView] = useState('inbox'); // 'inbox' | 'new_quote' | 'approvals' | 'catalog'
@@ -27,7 +22,6 @@ export default function App() {
   const [configStatus, setConfigStatus] = useState(null);
   const [isIntegrationsOpen, setIsIntegrationsOpen] = useState(false);
 
-  // Data state
   const [scenarios, setScenarios] = useState([]);
   const [catalog, setCatalog] = useState(null);
   const [quotesList, setQuotesList] = useState([]);
@@ -41,8 +35,8 @@ export default function App() {
   });
   const [selectedQuoteId, setSelectedQuoteId] = useState(null);
   const [currentQuote, setCurrentQuote] = useState(null);
+  const [escalatedDetails, setEscalatedDetails] = useState([]);
 
-  // Filters & UI state
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [isRunning, setIsRunning] = useState(false);
@@ -53,6 +47,19 @@ export default function App() {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [deliveryFeedback, setDeliveryFeedback] = useState('');
   const [isSavingCatalog, setIsSavingCatalog] = useState(false);
+
+  const loadQuoteDetail = async (quoteId) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/quotes/${quoteId}`);
+      if (!res.ok) return;
+      const detail = await res.json();
+      setSelectedQuoteId(quoteId);
+      setCurrentQuote(detail);
+      setDeliveryFeedback('');
+    } catch (err) {
+      console.error('Failed to load quote detail:', err);
+    }
+  };
 
   const fetchQuotesPipeline = useCallback(async (filterOverride = null, autoSelectId = null) => {
     const activeFilter = filterOverride || statusFilter;
@@ -81,20 +88,24 @@ export default function App() {
     }
   }, [statusFilter, selectedQuoteId]);
 
-  const loadQuoteDetail = async (quoteId) => {
+  const fetchEscalatedDetails = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/quotes/${quoteId}`);
+      const res = await fetch(`${API_BASE}/api/quotes?status=ESCALATED`);
       if (!res.ok) return;
-      const detail = await res.json();
-      setSelectedQuoteId(quoteId);
-      setCurrentQuote(detail);
-      setDeliveryFeedback('');
+      const data = await res.json();
+      if (data.analytics) setAnalytics(data.analytics);
+      const list = data.quotes || [];
+      const details = await Promise.all(
+        list.map((item) =>
+          fetch(`${API_BASE}/api/quotes/${item.quote_id}`).then((r) => (r.ok ? r.json() : item))
+        )
+      );
+      setEscalatedDetails(details);
     } catch (err) {
-      console.error('Failed to load quote detail:', err);
+      console.error('Failed to fetch escalated quotes:', err);
     }
-  };
+  }, []);
 
-  // Initial load
   useEffect(() => {
     Promise.all([
       fetch(`${API_BASE}/api/scenarios`).then((r) => r.json()),
@@ -119,25 +130,22 @@ export default function App() {
       });
   }, []);
 
-  // Re-fetch when filter or view changes
   useEffect(() => {
     if (!systemOnline) return;
     if (activeView === 'approvals') {
-      setStatusFilter('ESCALATED');
-      fetchQuotesPipeline('ESCALATED');
+      fetchEscalatedDetails();
     } else if (activeView === 'inbox') {
       fetchQuotesPipeline(statusFilter);
     }
   }, [activeView, statusFilter, systemOnline]);
 
-  // Sync IMAP Inbox
   const handleSyncInbox = async () => {
     setIsSyncing(true);
     setSyncNotice('');
     try {
       const res = await fetch(`${API_BASE}/api/emails/sync`, { method: 'POST' });
       const data = await res.json();
-      setSyncNotice(data.message || 'Inbox sync completed.');
+      setSyncNotice(data.message || 'Inbox synced.');
       if (data.quotes && data.quotes.length > 0) {
         await fetchQuotesPipeline('ALL', data.quotes[0].quote_id);
       }
@@ -145,13 +153,12 @@ export default function App() {
         setIsIntegrationsOpen(true);
       }
     } catch (err) {
-      setSyncNotice('Error syncing inbox. Check backend connection.');
+      setSyncNotice('Error syncing inbox.');
     } finally {
       setIsSyncing(false);
     }
   };
 
-  // Submit from Deal Builder
   const handleSubmitDealBuilder = async (payload) => {
     setIsRunning(true);
     try {
@@ -159,10 +166,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/api/run-cpq`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...payload,
-          use_mock_mode: useMock,
-        }),
+        body: JSON.stringify({ ...payload, use_mock_mode: useMock }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const quote = await res.json();
@@ -176,7 +180,6 @@ export default function App() {
     }
   };
 
-  // Submit from Inbound Email Webhook Simulator
   const handleSubmitInboundEmail = async (payload) => {
     setIsRunning(true);
     try {
@@ -193,30 +196,31 @@ export default function App() {
         await fetchQuotesPipeline('ALL', data.quote.quote_id);
       }
     } catch (err) {
-      alert(`Failed to process inbound email: ${err.message}`);
+      alert(`Failed to process email: ${err.message}`);
     } finally {
       setIsRunning(false);
     }
   };
 
-  // HITL: Accept Counter-Offer
-  const handleAcceptCounterOffer = async () => {
-    if (!currentQuote) return;
+  const handleAcceptCounterOffer = async (targetQuoteId = null) => {
+    const qid = typeof targetQuoteId === 'string' ? targetQuoteId : currentQuote?.quote_id;
+    if (!qid) return;
     setIsProcessingApproval(true);
     try {
       const res = await fetch(`${API_BASE}/api/approve-deal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          quote_id: currentQuote.quote_id,
+          quote_id: qid,
           action: 'accept_counter_offer',
           manager_notes: 'Counter-offer accepted (15% discount, 24-month commitment).',
         }),
       });
       if (!res.ok) throw new Error(`Approval failed ${res.status}`);
       const updated = await res.json();
-      setCurrentQuote(updated);
+      if (currentQuote?.quote_id === qid) setCurrentQuote(updated);
       await fetchQuotesPipeline(statusFilter, updated.quote_id);
+      if (activeView === 'approvals') await fetchEscalatedDetails();
     } catch (err) {
       alert('Failed to accept counter-offer.');
     } finally {
@@ -224,32 +228,33 @@ export default function App() {
     }
   };
 
-  // HITL: Manager Override
-  const handleApproveOverride = async (managerNotes) => {
-    if (!currentQuote) return;
+  const handleApproveOverride = async (arg1, arg2) => {
+    const qid = typeof arg2 === 'string' ? arg1 : currentQuote?.quote_id;
+    const managerNotes = typeof arg2 === 'string' ? arg2 : arg1;
+    if (!qid) return;
     setIsProcessingApproval(true);
     try {
       const res = await fetch(`${API_BASE}/api/approve-deal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          quote_id: currentQuote.quote_id,
+          quote_id: qid,
           action: 'manager_override',
-          manager_notes: managerNotes || 'Executive override authorized by Deal Desk Manager.',
+          manager_notes: managerNotes || 'Executive override authorized.',
         }),
       });
       if (!res.ok) throw new Error(`Override failed ${res.status}`);
       const updated = await res.json();
-      setCurrentQuote(updated);
+      if (currentQuote?.quote_id === qid) setCurrentQuote(updated);
       await fetchQuotesPipeline(statusFilter, updated.quote_id);
+      if (activeView === 'approvals') await fetchEscalatedDetails();
     } catch (err) {
-      alert('Failed to apply manager override.');
+      alert('Failed to apply override.');
     } finally {
       setIsProcessingApproval(false);
     }
   };
 
-  // Save edited email draft
   const handleSaveDraft = async (quoteId, emailDraft) => {
     const res = await fetch(`${API_BASE}/api/quotes/${quoteId}/update-draft`, {
       method: 'POST',
@@ -262,7 +267,6 @@ export default function App() {
     }
   };
 
-  // Send Quote Email + PDF to Client
   const handleSendEmail = async (quoteId, toEmail, emailBody) => {
     setIsSendingEmail(true);
     setDeliveryFeedback('');
@@ -270,10 +274,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/api/quotes/${quoteId}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to_email: toEmail,
-          email_body: emailBody,
-        }),
+        body: JSON.stringify({ to_email: toEmail, email_body: emailBody }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -281,7 +282,7 @@ export default function App() {
       }
       const data = await res.json();
       setCurrentQuote(data.quote);
-      setDeliveryFeedback(data.delivery?.message || 'Quote sent!');
+      setDeliveryFeedback(data.delivery?.message || 'Quote sent.');
       await fetchQuotesPipeline(statusFilter, quoteId);
     } catch (err) {
       alert(err.message);
@@ -290,7 +291,6 @@ export default function App() {
     }
   };
 
-  // Download PDF
   const handleDownloadPDF = async () => {
     if (!currentQuote) return;
     setIsDownloadingPDF(true);
@@ -317,7 +317,6 @@ export default function App() {
     }
   };
 
-  // Save Catalog Admin Changes
   const handleSaveCatalog = async (updatedCatalog) => {
     setIsSavingCatalog(true);
     try {
@@ -338,9 +337,16 @@ export default function App() {
     }
   };
 
+  const viewTitles = {
+    inbox: 'Quotes & Inbox',
+    approvals: 'Approvals',
+    new_quote: 'New Quote',
+    catalog: 'Product Catalog',
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      <Header
+    <div className="min-h-screen bg-[#f4f6f9] text-slate-900 flex flex-col md:flex-row font-sans">
+      <Sidebar
         activeView={activeView}
         setActiveView={setActiveView}
         escalatedCount={analytics.escalated_count}
@@ -350,177 +356,163 @@ export default function App() {
         systemOnline={systemOnline}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Top Pipeline Analytics Strip (shown on Inbox & Approvals) */}
-        {(activeView === 'inbox' || activeView === 'approvals') && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
-            <div className="bg-white border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between shadow-2xs">
-              <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">Pipeline ARR</span>
-                <span className="text-lg font-bold text-slate-900">
-                  ${(analytics.total_arr || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Clean Top Bar */}
+        <header className="h-13 bg-white border-b border-gray-200 px-6 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <h1 className="text-sm font-semibold text-gray-900">{viewTitles[activeView]}</h1>
+            {activeView === 'inbox' && (
+              <div className="hidden sm:flex items-center gap-4 text-xs text-gray-500 border-l border-gray-200 pl-4 tabular-nums">
+                <span>
+                  Pipeline <strong className="text-gray-900 font-medium">${(analytics.total_arr || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/yr
+                </span>
+                <span>
+                  Avg margin <strong className="text-gray-900 font-medium">{analytics.avg_margin || 0}%</strong>
+                </span>
+                <span>
+                  Sent <strong className="text-gray-900 font-medium">{analytics.sent_count || 0}</strong>
                 </span>
               </div>
-              <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600"><TrendingUp className="w-4 h-4" /></div>
-            </div>
-            <div className="bg-white border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between shadow-2xs">
-              <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">Avg Gross Margin</span>
-                <span className="text-lg font-bold text-emerald-600">{analytics.avg_margin || 0}%</span>
-              </div>
-              <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600"><ShieldCheck className="w-4 h-4" /></div>
-            </div>
-            <div className="bg-white border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between shadow-2xs">
-              <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">Pending Review</span>
-                <span className="text-lg font-bold text-amber-600">{analytics.escalated_count || 0}</span>
-              </div>
-              <div className="p-2 rounded-lg bg-amber-50 text-amber-600"><ShieldAlert className="w-4 h-4" /></div>
-            </div>
-            <div className="bg-white border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between shadow-2xs">
-              <div>
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">Sent to Clients</span>
-                <span className="text-lg font-bold text-slate-900">{analytics.sent_count || 0}</span>
-              </div>
-              <div className="p-2 rounded-lg bg-slate-100 text-slate-600"><Send className="w-4 h-4" /></div>
-            </div>
+            )}
           </div>
-        )}
 
-        {/* View 1 & 3: Inbox & Pipeline / Approvals Queue */}
-        {(activeView === 'inbox' || activeView === 'approvals') && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <div className="lg:col-span-4">
-              <PipelineSidebar
-                quotes={quotesList}
-                selectedQuoteId={selectedQuoteId}
-                onSelectQuote={loadQuoteDetail}
-                statusFilter={statusFilter}
-                setStatusFilter={setStatusFilter}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                onSyncInbox={handleSyncInbox}
-                isSyncing={isSyncing}
-                syncNotice={syncNotice}
-              />
-            </div>
+          {activeView !== 'new_quote' && (
+            <button
+              onClick={() => setActiveView('new_quote')}
+              className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3.5 py-1.5 rounded-md cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              New quote
+            </button>
+          )}
+        </header>
 
-            <div className="lg:col-span-8 space-y-5">
-              {currentQuote ? (
-                <>
-                  {/* Selected Deal Context Banner */}
-                  <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h2 className="text-base font-bold text-slate-900">
-                            {currentQuote.customer_company || currentQuote.customer_name}
-                          </h2>
-                          <span className="text-[11px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                            {currentQuote.quote_id}
-                          </span>
-                          {(currentQuote.source === 'email_inbound' || currentQuote.source === 'webhook') && (
-                            <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 font-medium">
-                              <Mail className="w-3 h-3" /> Inbound Client Email
+        {/* Main Content */}
+        <main className="flex-1 p-5 sm:p-6">
+          {activeView === 'inbox' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+              <div className="lg:col-span-4">
+                <PipelineSidebar
+                  quotes={quotesList}
+                  selectedQuoteId={selectedQuoteId}
+                  onSelectQuote={loadQuoteDetail}
+                  statusFilter={statusFilter}
+                  setStatusFilter={setStatusFilter}
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                  onSyncInbox={handleSyncInbox}
+                  isSyncing={isSyncing}
+                  syncNotice={syncNotice}
+                />
+              </div>
+
+              <div className="lg:col-span-8 space-y-4">
+                {currentQuote ? (
+                  <>
+                    {/* Clean Deal Header */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h2 className="text-base font-semibold text-gray-900">
+                              {currentQuote.customer_company || currentQuote.customer_name}
+                            </h2>
+                            <span className="text-xs font-mono text-gray-400">
+                              {currentQuote.quote_id}
                             </span>
-                          )}
+                            {(currentQuote.source === 'email_inbound' || currentQuote.source === 'webhook') && (
+                              <span className="inline-flex items-center gap-1 text-[11px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                                <Mail className="w-3 h-3 text-gray-400" /> Email
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {currentQuote.customer_name} &lt;{currentQuote.customer_email}&gt;
+                            {currentQuote.email_subject ? ` — ${currentQuote.email_subject}` : ''}
+                          </p>
                         </div>
-                        <p className="text-xs text-slate-500 mt-1">
-                          Contact: <strong className="text-slate-700">{currentQuote.customer_name}</strong> ({currentQuote.customer_email})
-                          {currentQuote.email_subject ? ` • Subject: "${currentQuote.email_subject}"` : ''}
-                        </p>
                       </div>
+
+                      {currentQuote.rfp_text && (
+                        <details className="mt-3 pt-3 border-t border-gray-100 text-xs">
+                          <summary className="cursor-pointer font-medium text-gray-500 hover:text-gray-900 select-none">
+                            Original client message
+                          </summary>
+                          <div className="mt-2 bg-gray-50 border border-gray-200 rounded-md p-3 text-gray-700 whitespace-pre-wrap leading-relaxed">
+                            {currentQuote.rfp_text}
+                          </div>
+                        </details>
+                      )}
                     </div>
 
-                    {currentQuote.rfp_text && (
-                      <details className="mt-3 pt-3 border-t border-slate-100 text-xs">
-                        <summary className="cursor-pointer font-semibold text-indigo-600 hover:text-indigo-800 select-none">
-                          View Original Client Request / Email
-                        </summary>
-                        <div className="mt-2 bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-600 whitespace-pre-wrap leading-relaxed">
-                          {currentQuote.rfp_text}
-                        </div>
-                      </details>
+                    <KPICards quote={currentQuote} />
+
+                    {currentQuote.guardrail_status === 'ESCALATED' && (
+                      <HITLEscalationBanner
+                        quote={currentQuote}
+                        onApproveOverride={handleApproveOverride}
+                        onAcceptCounterOffer={handleAcceptCounterOffer}
+                        isProcessing={isProcessingApproval}
+                      />
                     )}
-                  </div>
 
-                  <KPICards quote={currentQuote} />
-
-                  {currentQuote.guardrail_status === 'ESCALATED' && (
-                    <HITLEscalationBanner
+                    <QuoteTable
                       quote={currentQuote}
-                      onApproveOverride={handleApproveOverride}
-                      onAcceptCounterOffer={handleAcceptCounterOffer}
-                      isProcessing={isProcessingApproval}
+                      onDownloadPDF={handleDownloadPDF}
+                      isDownloadingPDF={isDownloadingPDF}
+                      onSaveDraft={handleSaveDraft}
+                      onSendEmail={handleSendEmail}
+                      isSendingEmail={isSendingEmail}
+                      deliveryFeedback={deliveryFeedback}
                     />
-                  )}
-
-                  <AgentTimeline
-                    executionTrace={currentQuote.execution_trace || []}
-                    isRunning={isRunning}
-                  />
-
-                  <QuoteTable
-                    quote={currentQuote}
-                    onDownloadPDF={handleDownloadPDF}
-                    isDownloadingPDF={isDownloadingPDF}
-                    onSaveDraft={handleSaveDraft}
-                    onSendEmail={handleSendEmail}
-                    isSendingEmail={isSendingEmail}
-                    deliveryFeedback={deliveryFeedback}
-                  />
-                </>
-              ) : (
-                <div className="bg-white border border-slate-200/90 rounded-2xl p-12 text-center shadow-xs">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto mb-3 text-indigo-600">
-                    <Inbox className="w-6 h-6" />
+                  </>
+                ) : (
+                  <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
+                    <div className="text-sm font-medium text-gray-900">Select a quote</div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Choose a request on the left, sync your inbox, or create a new quote.
+                    </p>
                   </div>
-                  <h3 className="text-sm font-bold text-slate-900">No Deal Selected</h3>
-                  <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-5">
-                    {activeView === 'approvals'
-                      ? 'No deals are currently escalated for manager approval.'
-                      : 'Select a quote from the queue, sync your connected email inbox, or create a new quote.'}
-                  </p>
-                  <div className="flex items-center justify-center gap-3">
-                    <button
-                      onClick={() => setActiveView('new_quote')}
-                      className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-xl cursor-pointer"
-                    >
-                      <PlusCircle className="w-4 h-4" /> Create New Quote
-                    </button>
-                    <button
-                      onClick={handleSyncInbox}
-                      className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-4 py-2 rounded-xl cursor-pointer"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" /> Sync Inbox
-                    </button>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* View 2: New Quote Builder & Inbound Email Intake */}
-        {activeView === 'new_quote' && (
-          <NewQuoteView
-            scenarios={scenarios}
-            catalog={catalog}
-            onSubmitDealBuilder={handleSubmitDealBuilder}
-            onSubmitInboundEmail={handleSubmitInboundEmail}
-            isRunning={isRunning}
-          />
-        )}
+          {activeView === 'approvals' && (
+            <ApprovalsView
+              escalatedQuotes={escalatedDetails}
+              onAcceptCounterOffer={handleAcceptCounterOffer}
+              onApproveOverride={handleApproveOverride}
+              onInspectQuote={(qid) => {
+                setStatusFilter('ALL');
+                setSelectedQuoteId(qid);
+                setActiveView('inbox');
+                loadQuoteDetail(qid);
+              }}
+              isProcessing={isProcessingApproval}
+              onGoToInbox={() => setActiveView('inbox')}
+            />
+          )}
 
-        {/* View 4: Catalog & Rules Admin */}
-        {activeView === 'catalog' && (
-          <CatalogAdminView
-            catalog={catalog}
-            onSaveCatalog={handleSaveCatalog}
-            isSaving={isSavingCatalog}
-          />
-        )}
-      </main>
+          {activeView === 'new_quote' && (
+            <NewQuoteView
+              scenarios={scenarios}
+              catalog={catalog}
+              onSubmitDealBuilder={handleSubmitDealBuilder}
+              onSubmitInboundEmail={handleSubmitInboundEmail}
+              isRunning={isRunning}
+            />
+          )}
+
+          {activeView === 'catalog' && (
+            <CatalogAdminView
+              catalog={catalog}
+              onSaveCatalog={handleSaveCatalog}
+              isSaving={isSavingCatalog}
+            />
+          )}
+        </main>
+      </div>
 
       <IntegrationsModal
         isOpen={isIntegrationsOpen}

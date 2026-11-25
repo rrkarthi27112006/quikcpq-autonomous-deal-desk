@@ -20,6 +20,8 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional, Literal
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from backend.config import get_config_status, load_env_file
@@ -463,3 +465,17 @@ def export_pdf(request: ExportPDFRequest):
 def get_audit_history(limit: int = 15):
     """Returns recent quote audits and decisions."""
     return {"quotes": get_recent_quotes(limit=limit)}
+
+# ----------------- Production Static Frontend Serving -----------------
+FRONTEND_DIST = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist")
+if os.path.isdir(FRONTEND_DIST):
+    assets_dir = os.path.join(FRONTEND_DIST, "assets")
+    if os.path.isdir(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/{full_path:path}")
+    def serve_spa(full_path: str):
+        file_path = os.path.join(FRONTEND_DIST, full_path)
+        if full_path and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(FRONTEND_DIST, "index.html"))
